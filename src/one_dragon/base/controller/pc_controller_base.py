@@ -1,9 +1,10 @@
-import time
-
 import ctypes
 import cv2
+import mss
 import numpy as np
 import pyautogui
+import time
+
 from PIL.Image import Image
 from cv2.typing import MatLike
 from functools import lru_cache
@@ -119,6 +120,16 @@ class PcControllerBase(ControllerBase):
 
     def get_screenshot(self, independent: bool = False) -> MatLike | None:
         """
+        截图 优先调用 windows API
+        :return: 截图
+        """
+        result = self.get_screenshot_winapi(independent)
+        if result is None:
+            result = self.get_screenshot_mss(independent)
+        return result
+
+    def get_screenshot_mss(self, independent: bool = False) -> MatLike | None:
+        """
         截图 如果分辨率和默认不一样则进行缩放
         :return: 截图
         """
@@ -135,7 +146,6 @@ class PcControllerBase(ControllerBase):
             monitor = {"top": top, "left": left, "width": width, "height": height}
             if independent:
                 try:
-                    import mss
                     with mss.mss() as sct:
                         screenshot = cv2.cvtColor(np.array(sct.grab(monitor)), cv2.COLOR_BGRA2RGB)
                 except Exception:
