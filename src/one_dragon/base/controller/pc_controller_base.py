@@ -211,6 +211,7 @@ class PcControllerBase(ControllerBase):
             result = ctypes.windll.user32.PrintWindow(hwnd, mfcDC, 0x00000002)  # PW_CLIENTONLY
             if not result:
                 # 如果PrintWindow失败，尝试使用BitBlt
+                log.debug("PrintWindow 失败，尝试使用 BitBlt")
                 ctypes.windll.gdi32.BitBlt(mfcDC, 0, 0, width, height, hwndDC, 0, 0, 0x00CC0020)  # SRCCOPY
 
             # 创建缓冲区
@@ -235,7 +236,7 @@ class PcControllerBase(ControllerBase):
 
             # 获取DIB数据
             lines = ctypes.windll.gdi32.GetDIBits(hwndDC, saveBitMap, 0, height, buffer, 
-                                 bmpinfo_buffer, 0)  # DIB_RGB_COLORS
+                                                  bmpinfo_buffer, 0)  # DIB_RGB_COLORS
 
             if lines == 0:
                 log.warning('无法获取位图数据')
