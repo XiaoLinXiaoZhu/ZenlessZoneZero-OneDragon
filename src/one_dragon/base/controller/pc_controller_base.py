@@ -147,10 +147,14 @@ class PcControllerBase(ControllerBase):
             if independent:
                 try:
                     with mss.mss() as sct:
+                        before_screenshot_time = time.time()
+                        log.debug(f"MSS 截图开始时间:{before_screenshot_time}")
                         screenshot = cv2.cvtColor(np.array(sct.grab(monitor)), cv2.COLOR_BGRA2RGB)
                 except Exception:
                     pass
             else:
+                before_screenshot_time = time.time()
+                log.debug(f"MSS 截图开始时间:{before_screenshot_time}")
                 screenshot = cv2.cvtColor(np.array(self.sct.grab(monitor)), cv2.COLOR_BGRA2RGB)
         else:
             img: Image = pyautogui.screenshot(region=(left, top, width, height))
@@ -161,12 +165,16 @@ class PcControllerBase(ControllerBase):
         else:
             result = screenshot
 
+        after_screenshot_time = time.time()
+        log.debug(f"MSS 截图结束时间:{after_screenshot_time}, 耗时:{after_screenshot_time - before_screenshot_time}")
         return result
 
     def get_screenshot_winapi(self, independent: bool = False) -> MatLike | None:
         """
         后台截图实现 - 使用Windows API获取窗口截图
         """
+        before_screenshot_time = time.time()
+        log.debug(f"Windows API 截图开始时间:{before_screenshot_time}")
         hwnd = self.game_win.get_hwnd()
         if not hwnd:
             log.warning('未找到目标窗口，无法截图')
@@ -253,6 +261,8 @@ class PcControllerBase(ControllerBase):
             if self.game_win.is_win_scale:
                 screenshot = cv2.resize(screenshot, (self.standard_width, self.standard_height))
 
+            after_screenshot_time = time.time()
+            log.debug(f"Windows API 截图结束时间:{after_screenshot_time}, 耗时:{after_screenshot_time - before_screenshot_time}")
             return screenshot
 
         finally:
