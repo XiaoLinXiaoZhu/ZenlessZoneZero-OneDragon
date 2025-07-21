@@ -189,7 +189,7 @@ class PcControllerBase(ControllerBase):
             log.warning('无法获取窗口设备上下文')
             return None
 
-            # 创建兼容的设备上下文和位图
+        # 创建兼容的设备上下文和位图
         mfcDC = ctypes.windll.gdi32.CreateCompatibleDC(hwndDC)
         if not mfcDC:
             log.warning('无法创建兼容设备上下文')
@@ -235,7 +235,7 @@ class PcControllerBase(ControllerBase):
             ctypes.c_uint32.from_address(ctypes.addressof(bmpinfo_buffer) + 16).value = 0
 
             # 获取DIB数据
-            lines = ctypes.windll.gdi32.GetDIBits(hwndDC, saveBitMap, 0, height, buffer, 
+            lines = ctypes.windll.gdi32.GetDIBits(hwndDC, saveBitMap, 0, height, buffer,
                                                   bmpinfo_buffer, 0)  # DIB_RGB_COLORS
 
             if lines == 0:
