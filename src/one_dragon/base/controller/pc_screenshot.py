@@ -37,6 +37,9 @@ class PcScreenshot:
         self.print_window_width: int = 0
         self.print_window_height: int = 0
 
+        # D3DShot instance
+        self.d3dshot_instance = None
+
     def get_screenshot(self, independent: bool = False) -> MatLike | None:
         """
         根据初始化的方法获取截图
@@ -55,6 +58,8 @@ class PcScreenshot:
             return self.get_screenshot_mss(rect, independent)
         elif self.initialized_method == "print_window":
             return self.get_screenshot_print_window(rect, independent)
+        elif self.initialized_method == "dxgi":
+            return self.get_screenshot_dxgi(rect, independent)
         else:  # 独立截图
             result = self.get_screenshot_print_window(rect, independent)
             if result is None:
@@ -86,13 +91,14 @@ class PcScreenshot:
     def init_screenshot(self, method: str):
         """
         初始化截图方法，带有回退机制
-        :param method: 首选的截图方法 ("mss", "print_window", "auto")
+        :param method: 首选的截图方法 ("print_window", "mss", "dxgi", "auto")
         """
         # 定义方法优先级
         fallback_order = {
             "mss": ["mss", "print_window"],
             "print_window": ["print_window", "mss"],
-            "auto": ["print_window", "mss"]
+            "dxgi": ["dxgi", "print_window", "mss"],
+            "auto": ["print_window", "mss", "dxgi"]
         }
 
         methods_to_try = fallback_order.get(method, ["print_window", "mss"])
@@ -104,6 +110,8 @@ class PcScreenshot:
                 success = self.init_mss()
             elif attempt_method == "print_window":
                 success = self.init_print_window()
+            elif attempt_method == "dxgi":
+                success = self.init_dxgi()
 
             if success:
                 self.initialized_method = attempt_method
@@ -166,6 +174,20 @@ class PcScreenshot:
 
         except Exception as e:
             log.debug(f'Print Window 截图方法初始化失败: {e}')
+            return False
+
+    def init_dxgi(self):
+        """初始化DXGI资源"""
+        if self.d3dshot_instance:
+            self.d3dshot_instance = None
+        try:
+            import d3dshot
+            # 默认返回的就是RGB格式
+            self.d3dshot_instance = d3dshot.create(capture_output="numpy")
+            if self.d3dshot_instance is not None:
+                return True
+        except Exception as e:
+            log.debug(f"D3DShot初始化失败: {str(e)}")
             return False
 
     def get_screenshot_mss(self, rect: Rect, independent: bool = False) -> MatLike | None:
@@ -414,3 +436,38 @@ class PcScreenshot:
                 ctypes.windll.gdi32.DeleteDC(mfcDC)
             if hwndDC:
                 ctypes.windll.user32.ReleaseDC(hwnd, hwndDC)
+
+    def get_screenshot_dxgi(self, rect: Rect, independent: bool = False) -> MatLike | None:
+        """
+        使用DXGI进行截图
+        :param independent: 是否独立截图
+        :return: 截图
+        """
+        before_screenshot_time = time.time()
+
+        region = (rect.x1, rect.y1, rect.x2, rect.y2)
+
+        try:
+            if independent:
+                import d3dshot
+                with d3dshot.create(capture_output="numpy") as d3d_instance:
+                    screenshot = d3d_instance.screenshot(region=region)
+            else:
+                screenshot = self.d3dshot_instance.screenshot(region=region)
+
+        except Exception as e:
+            log.debug(f'DXGI截图失败: {str(e)}')
+            if self.init_dxgi():
+                try:
+                    screenshot = self.d3dshot_instance.screenshot(region=region)
+                except Exception:
+                    pass
+
+        # 缩放到标准分辨率
+        if self.game_win.is_win_scale:
+            screenshot = cv2.resize(screenshot, (self.standard_width, self.standard_height))
+
+        after_screenshot_time = time.time()
+        log.debug(f"DXGI 截图耗时:{after_screenshot_time - before_screenshot_time}")
+
+        return screenshot
