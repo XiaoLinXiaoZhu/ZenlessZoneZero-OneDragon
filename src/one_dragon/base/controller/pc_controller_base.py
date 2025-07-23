@@ -45,8 +45,12 @@ class PcControllerBase(ControllerBase):
 
     def init_before_context_run(self) -> bool:
         pyautogui.FAILSAFE = False  # 禁用 Fail-Safe,防止鼠标接近屏幕的边缘或角落时报错
-        self.screenshot_controller.init_screenshot(self.screenshot_method)
         self.active_window()
+
+        if self.is_game_window_ready:
+            self.screenshot_controller.init_screenshot(self.screenshot_method)
+        else:
+            self.screenshot_controller.async_init_screenshot(self.screenshot_method, self.is_game_window_ready)
 
         return True
 

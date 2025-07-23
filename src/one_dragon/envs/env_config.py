@@ -74,7 +74,7 @@ class ScreenshotMethodEnum(Enum):
 
     AUTO = ConfigItem('自动', 'auto')
     MSS = ConfigItem('MSS', 'mss')
-    PRINT_WINDOW = ConfigItem('PrintWindow', 'print_window')
+    PRINT_WINDOW = ConfigItem('Print Window', 'print_window')
 
 
 class EnvConfig(YamlConfig):
