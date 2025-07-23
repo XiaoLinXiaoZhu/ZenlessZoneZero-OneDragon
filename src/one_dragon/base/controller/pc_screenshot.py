@@ -161,7 +161,7 @@ class PcScreenshot:
             return True
 
         except Exception as e:
-            log.error(f'Print Window 截图方法初始化失败: {e}')
+            log.debug(f'Print Window 截图方法初始化失败: {e}')
             return False
 
     def get_screenshot_mss(self, independent: bool = False) -> MatLike | None:
@@ -268,7 +268,7 @@ class PcScreenshot:
                                                   before_screenshot_time)
 
         except Exception as e:
-            log.error(f'使用预加载资源截图失败: {e}')
+            log.debug(f'Print Window截图失败: {e}')
             # 回退到独立模式
             return self._get_screenshot_print_window_independent(hwnd, width, height, before_screenshot_time)
 
@@ -407,7 +407,7 @@ class PcScreenshot:
                                                 before_screenshot_time)
 
         except Exception as e:
-            log.error(f'独立模式Print Window截图失败: {e}')
+            log.debug(f'独立模式Print Window截图失败: {e}')
             return None
 
         finally:
