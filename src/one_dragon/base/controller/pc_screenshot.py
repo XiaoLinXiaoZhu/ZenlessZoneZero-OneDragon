@@ -26,10 +26,10 @@ class PcScreenshot:
     def get_screenshot(self, independent: bool = False) -> MatLike | None:
         """
         根据初始化的方法获取截图
-        :param independent: 是否独立截图（不进行缩放）
+        :param independent: 是否独立截图（不进行初始化）
         :return: 截图数组
         """
-        if not self.initialized_method:
+        if not self.initialized_method and not independent:
             log.error('截图方法尚未初始化，请先调用 init_screenshot()')
             return None
 
@@ -37,9 +37,8 @@ class PcScreenshot:
             return self.get_screenshot_mss(independent)
         elif self.initialized_method == "print_window":
             return self.get_screenshot_print_window(independent)
-        else:
-            log.error(f'未知的截图方法: {self.initialized_method}')
-            return None
+        else:  # 独立截图
+            return self.get_screenshot_print_window(independent)
 
     def init_screenshot(self, method: str):
         """
@@ -232,4 +231,3 @@ class PcScreenshot:
             ctypes.windll.gdi32.DeleteObject(saveBitMap)
             ctypes.windll.gdi32.DeleteDC(mfcDC)
             ctypes.windll.user32.ReleaseDC(hwnd, hwndDC)
-
