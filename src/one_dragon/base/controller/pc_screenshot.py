@@ -180,17 +180,24 @@ class PcScreenshot:
 
         if self.mss_instance is not None:
             monitor = {"top": top, "left": left, "width": width, "height": height}
-            if independent:
-                try:
+            try:
+                if independent:
                     from mss import mss
                     with mss() as mss_instance:
                         before_screenshot_time = time.time()
                         screenshot = cv2.cvtColor(np.array(mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
-                except Exception:
-                    pass
-            else:
-                before_screenshot_time = time.time()
-                screenshot = cv2.cvtColor(np.array(self.mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
+                else:
+                    before_screenshot_time = time.time()
+                    screenshot = cv2.cvtColor(np.array(self.mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
+            except Exception:
+                if not independent:
+                    # 重新初始化MSS实例
+                    if self.init_mss():
+                        try:
+                            before_screenshot_time = time.time()
+                            screenshot = cv2.cvtColor(np.array(self.mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
+                        except Exception:
+                            pass
         else:
             img: Image = pyautogui.screenshot(region=(left, top, width, height))
             screenshot = np.array(img)
