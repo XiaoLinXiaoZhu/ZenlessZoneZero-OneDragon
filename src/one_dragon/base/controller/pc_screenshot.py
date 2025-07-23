@@ -57,29 +57,25 @@ class PcScreenshot:
                 return self.get_screenshot_mss(independent)
             return result
 
-    def async_init_screenshot(self, method: str, window_ready_func):
+    def async_init_screenshot(self, method: str):
         """
         异步初始化截图方法
         :param method: 首选的截图方法 ("mss", "print_window", "auto")
-        :param window_ready_func: 检查窗口是否准备就绪的函数
         """
-        f = SCREENSHOT_EXECUTOR.submit(self._init_screenshot_with_wait, method, window_ready_func)
+        f = SCREENSHOT_EXECUTOR.submit(self._init_screenshot_with_wait, method)
         f.add_done_callback(thread_utils.handle_future_result)
 
-    def _init_screenshot_with_wait(self, method: str, window_ready_func):
+    def _init_screenshot_with_wait(self, method: str):
         """
-        带等待逻辑的初始化截图方法（在异步线程中执行）
+        等待窗口准备好再初始化截图
         :param method: 首选的截图方法
-        :param window_ready_func: 检查窗口是否准备就绪的函数
         :return: 初始化结果
         """
-        # 如果提供了窗口准备检查函数，先等待窗口准备就绪
-        if window_ready_func is not None:
-            check_interval: float = 0.5
-            while True:
-                if window_ready_func():
-                    break
-                time.sleep(check_interval)
+        check_interval: float = 0.5
+        while True:
+            if self.game_win.is_win_valid:
+                break
+            time.sleep(check_interval)
 
         return self.init_screenshot(method)
 
