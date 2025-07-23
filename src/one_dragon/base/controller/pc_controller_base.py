@@ -50,7 +50,7 @@ class PcControllerBase(ControllerBase):
         if self.is_game_window_ready:
             self.screenshot_controller.init_screenshot(self.screenshot_method)
         else:
-            self.screenshot_controller.async_init_screenshot(self.screenshot_method, self.is_game_window_ready)
+            self.screenshot_controller.async_init_screenshot(self.screenshot_method)
 
         return True
 
@@ -112,7 +112,10 @@ class PcControllerBase(ControllerBase):
         return True
 
     def get_screenshot(self, independent: bool = False) -> MatLike | None:
-        return self.screenshot_controller.get_screenshot(independent)
+        if self.is_game_window_ready:
+            return self.screenshot_controller.get_screenshot(independent)
+        else:
+            return None
 
     def scroll(self, down: int, pos: Point = None):
         """
