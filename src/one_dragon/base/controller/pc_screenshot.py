@@ -169,6 +169,8 @@ class PcScreenshot:
         截图 如果分辨率和默认不一样则进行缩放
         :return: 截图
         """
+        before_screenshot_time = time.time()
+
         rect: Rect = self.game_win.win_rect
         if rect is None:
             return None
@@ -184,17 +186,14 @@ class PcScreenshot:
                 if independent:
                     from mss import mss
                     with mss() as mss_instance:
-                        before_screenshot_time = time.time()
                         screenshot = cv2.cvtColor(np.array(mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
                 else:
-                    before_screenshot_time = time.time()
                     screenshot = cv2.cvtColor(np.array(self.mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
             except Exception:
                 if not independent:
                     # 重新初始化MSS实例
                     if self.init_mss():
                         try:
-                            before_screenshot_time = time.time()
                             screenshot = cv2.cvtColor(np.array(self.mss_instance.grab(monitor)), cv2.COLOR_BGRA2RGB)
                         except Exception:
                             pass
@@ -217,6 +216,7 @@ class PcScreenshot:
         :param independent: 是否独立截图
         """
         before_screenshot_time = time.time()
+
         hwnd = self.game_win.get_hwnd()
         if not hwnd:
             log.warning('未找到目标窗口，无法截图')
