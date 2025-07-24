@@ -47,14 +47,18 @@ class PcScreenshot:
             log.error('截图方法尚未初始化，请先调用 init_screenshot()')
             return None
 
+        rect: Rect = self.game_win.win_rect
+        if rect is None:
+            return None
+
         if self.initialized_method == "mss":
-            return self.get_screenshot_mss(independent)
+            return self.get_screenshot_mss(rect, independent)
         elif self.initialized_method == "print_window":
-            return self.get_screenshot_print_window(independent)
+            return self.get_screenshot_print_window(rect, independent)
         else:  # 独立截图
-            result = self.get_screenshot_print_window(independent)
+            result = self.get_screenshot_print_window(rect, independent)
             if result is None:
-                return self.get_screenshot_mss(independent)
+                return self.get_screenshot_mss(rect, independent)
             return result
 
     def async_init_screenshot(self, method: str):
@@ -164,16 +168,12 @@ class PcScreenshot:
             log.debug(f'Print Window 截图方法初始化失败: {e}')
             return False
 
-    def get_screenshot_mss(self, independent: bool = False) -> MatLike | None:
+    def get_screenshot_mss(self, rect: Rect, independent: bool = False) -> MatLike | None:
         """
         截图 如果分辨率和默认不一样则进行缩放
         :return: 截图
         """
         before_screenshot_time = time.time()
-
-        rect: Rect = self.game_win.win_rect
-        if rect is None:
-            return None
 
         left = rect.x1
         top = rect.y1
@@ -210,7 +210,7 @@ class PcScreenshot:
         log.debug(f"MSS 截图耗时:{after_screenshot_time - before_screenshot_time}")
         return result
 
-    def get_screenshot_print_window(self, independent: bool = False) -> MatLike | None:
+    def get_screenshot_print_window(self, rect: Rect, independent: bool = False) -> MatLike | None:
         """
         Print Window 获取窗口截图
         :param independent: 是否独立截图
@@ -220,10 +220,6 @@ class PcScreenshot:
         hwnd = self.game_win.get_hwnd()
         if not hwnd:
             log.warning('未找到目标窗口，无法截图')
-            return None
-
-        rect: Rect = self.game_win.win_rect
-        if rect is None:
             return None
 
         width = rect.width
