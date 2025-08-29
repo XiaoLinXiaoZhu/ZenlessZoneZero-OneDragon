@@ -4,8 +4,8 @@ from typing import Optional, Dict
 
 from cv2.typing import MatLike
 
-from one_dragon.base.controller.pc_screenshot.mss_screencapper import MssScreencapper
 from one_dragon.base.controller.pc_game_window import PcGameWindow
+from one_dragon.base.controller.pc_screenshot.bitblt_screencapper import BitBltScreencapper
 from one_dragon.base.controller.pc_screenshot.pil_screencapper import PilScreencapper
 from one_dragon.base.controller.pc_screenshot.print_window_screencapper import PrintWindowScreencapper
 from one_dragon.base.controller.pc_screenshot.screencapper_base import ScreencapperBase
@@ -13,7 +13,6 @@ from one_dragon.base.geometry.rectangle import Rect
 from one_dragon.utils import thread_utils
 from one_dragon.utils.log_utils import log
 
-SCREENSHOT_INIT_EXECUTOR = ThreadPoolExecutor(thread_name_prefix='screenshot', max_workers=1)
 
 
 class PcScreenshotController:
@@ -27,9 +26,14 @@ class PcScreenshotController:
         self.standard_width: int = standard_width
         self.standard_height: int = standard_height
 
+        # 每个控制器实例维护自己的异步初始化线程池，避免模块级共享
+        self._screenshot_init_executor: Optional[ThreadPoolExecutor] = ThreadPoolExecutor(
+            thread_name_prefix='screenshot', max_workers=1
+        )
+
         self.strategies: Dict[str, ScreencapperBase] = {
+            "bitblt": BitBltScreencapper(game_win, standard_width, standard_height),
             "print_window": PrintWindowScreencapper(game_win, standard_width, standard_height),
-            "mss": MssScreencapper(game_win, standard_width, standard_height),
             "pil": PilScreencapper(game_win, standard_width, standard_height)
         }
         self.active_strategy_name: Optional[str] = None
@@ -71,9 +75,13 @@ class PcScreenshotController:
     def async_init_screenshot(self, method: str):
         """
         异步初始化截图方法
-        :param method: 首选的截图方法 ("auto", "print_window", "mss", "pil")
+        :param method: 首选的截图方法 ("bitblt", "print_window", "pil")
         """
-        future = SCREENSHOT_INIT_EXECUTOR.submit(self._init_screenshot_with_wait, method)
+        if not self._screenshot_init_executor:
+            # 如果线程池已被清理，重新创建一个
+            self._screenshot_init_executor = ThreadPoolExecutor(thread_name_prefix='screenshot', max_workers=1)
+
+        future = self._screenshot_init_executor.submit(self._init_screenshot_with_wait, method)
         future.add_done_callback(thread_utils.handle_future_result)
 
     def _init_screenshot_with_wait(self, method: str):
@@ -91,7 +99,7 @@ class PcScreenshotController:
     def init_screenshot(self, method: str) -> Optional[str]:
         """
         初始化截图方法，带有回退机制
-        :param method: 首选的截图方法 ("auto", "print_window", "mss", "pil")
+        :param method: 首选的截图方法 ("bitblt", "print_window", "pil")
         """
         self.cleanup_resources()
 
@@ -123,7 +131,11 @@ class PcScreenshotController:
         """
         清理异步初始化线程池
         """
-        SCREENSHOT_INIT_EXECUTOR.shutdown(wait=False, cancel_futures=True)
+        if self._screenshot_init_executor:
+            try:
+                self._screenshot_init_executor.shutdown(wait=False, cancel_futures=True)
+            finally:
+                self._screenshot_init_executor = None
 
     def cleanup(self):
         """
@@ -135,14 +147,13 @@ class PcScreenshotController:
     def _get_method_priority_list(self, method: str) -> list:
         """
         获取截图方法的优先级列表
-        :param method: 首选方法 ("auto", "print_window", "mss", "pil")
+        :param method: 首选方法 ("bitblt", "print_window", "pil")
         :return: 方法名称列表，按优先级排序
         """
         fallback_order = {
-            "auto": ["print_window", "mss", "pil"],
-            "print_window": ["print_window", "mss", "pil"],
-            "mss": ["mss", "print_window", "pil"],
-            "pil": ["pil", "print_window", "mss"]
+            "bitblt": ["bitblt", "print_window", "pil"],
+            "print_window": ["print_window", "bitblt", "pil"],
+            "pil": ["pil", "bitblt", "print_window"]
         }
 
-        return fallback_order.get(method, ["print_window", "mss", "pil"])
+        return fallback_order.get(method, ["bitblt", "print_window", "pil"])

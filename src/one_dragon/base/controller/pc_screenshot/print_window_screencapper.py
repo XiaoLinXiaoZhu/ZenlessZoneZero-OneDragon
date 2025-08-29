@@ -10,6 +10,7 @@ from one_dragon.base.controller.pc_screenshot.screencapper_base import Screencap
 from one_dragon.base.geometry.rectangle import Rect
 import threading
 from one_dragon.utils.log_utils import log
+from one_dragon.base.controller.pc_screenshot.bitmap_resources import BitmapResourceMixin
 
 # WinAPI / GDI constants
 PW_CLIENTONLY = 0x00000001
@@ -18,7 +19,7 @@ PW_FLAGS = PW_CLIENTONLY | PW_RENDERFULLCONTENT
 SRCCOPY = 0x00CC0020
 DIB_RGB_COLORS = 0
 
-class PrintWindowScreencapper(ScreencapperBase):
+class PrintWindowScreencapper(ScreencapperBase, BitmapResourceMixin):
     """
     使用 PrintWindow API 进行截图的策略
     """
@@ -194,9 +195,21 @@ class PrintWindowScreencapper(ScreencapperBase):
                     self.width = width
                     self.height = height
 
-        return self._capture_window_to_bitmap(hwnd, width, height,
-                                              self.hwndDC, self.mfcDC, self.saveBitMap,
-                                              self.buffer, self.bmpinfo_buffer)
+        return self._capture_bitmap_to_image(
+            hwnd=hwnd,
+            width=width,
+            height=height,
+            hwndDC=self.hwndDC,
+            mfcDC=self.mfcDC,
+            saveBitMap=self.saveBitMap,
+            buffer=self.buffer,
+            bmpinfo_buffer=self.bmpinfo_buffer,
+            use_printwindow=True,
+            pw_flags=PW_FLAGS,
+            is_win_scale=getattr(self.game_win, "is_win_scale", False),
+            standard_width=self.standard_width,
+            standard_height=self.standard_height
+        )
 
     def _capture_independent(self, hwnd, width, height) -> Optional[MatLike]:
         """
@@ -217,8 +230,21 @@ class PrintWindowScreencapper(ScreencapperBase):
 
             saveBitMap, buffer, bmpinfo_buffer = self._create_bitmap_resources(width, height, hwndDC)
 
-            return self._capture_window_to_bitmap(hwnd, width, height, hwndDC, mfcDC,
-                                                  saveBitMap, buffer, bmpinfo_buffer)
+            return self._capture_bitmap_to_image(
+                hwnd=hwnd,
+                width=width,
+                height=height,
+                hwndDC=hwndDC,
+                mfcDC=mfcDC,
+                saveBitMap=saveBitMap,
+                buffer=buffer,
+                bmpinfo_buffer=bmpinfo_buffer,
+                use_printwindow=True,
+                pw_flags=PW_FLAGS,
+                is_win_scale=self.game_win.is_win_scale,
+                standard_width=self.standard_width,
+                standard_height=self.standard_height
+            )
         except Exception as e:
             log.exception("独立模式截图失败: %s", e)
             return None
@@ -238,63 +264,4 @@ class PrintWindowScreencapper(ScreencapperBase):
 
     # 位图信息创建已移动到 BitmapResourceMixin._create_bmpinfo_buffer
 
-    def _capture_window_to_bitmap(self, hwnd, width, height,
-                                  hwndDC, mfcDC, saveBitMap,
-                                  buffer, bmpinfo_buffer) -> Optional[MatLike]:
-        """
-        执行窗口截图的核心逻辑。
-        要点：
-         - 在 SelectObject 时保存原始对象并在结束时恢复，避免位图被持续选入 DC 导致 DeleteObject 失败。
-         - 使用与位图关联的 DC 调用 GetDIBits（mfcDC）。
-        """
-        if not all([hwndDC, mfcDC, saveBitMap, buffer, bmpinfo_buffer]):
-            log.error("无效参数传入 _capture_window_to_bitmap")
-            return None
-
-        prev_obj = None
-        try:
-            prev_obj = ctypes.windll.gdi32.SelectObject(mfcDC, saveBitMap)
-            # 记录被替换前的对象，便于在需要时安全恢复（例如在替换/删除位图前）
-            try:
-                with self._lock:
-                    self._selected_prev = prev_obj
-            except Exception:
-                # 记录但不终止流程
-                log.exception("记录选中前对象句柄失败")
-            # 使用命名常量（仅使用 PrintWindow，不回退 BitBlt）
-            result = ctypes.windll.user32.PrintWindow(hwnd, mfcDC, PW_FLAGS)
-            if not result:
-                log.error("PrintWindow 调用失败: hwnd=%s", hwnd)
-                return None
-
-            # 注意：GetDIBits 的第一个参数应为位图所关联的 DC（mfcDC）
-            lines = ctypes.windll.gdi32.GetDIBits(mfcDC, saveBitMap,
-                                                  0, height, buffer,
-                                                  bmpinfo_buffer, DIB_RGB_COLORS)
-            if lines != height:
-                log.error("GetDIBits 返回行数不匹配: %s != %s", lines, height)
-                return None
-
-            img_array = np.frombuffer(buffer, dtype=np.uint8).reshape((height, width, 4))
-            screenshot = cv2.cvtColor(img_array, cv2.COLOR_BGRA2RGB)
-
-            if self.game_win.is_win_scale:
-                screenshot = cv2.resize(screenshot, (self.standard_width, self.standard_height))
-
-            return screenshot
-        except Exception as e:
-            log.exception("从位图构建截图失败: %s", e)
-            return None
-        finally:
-            try:
-                if prev_obj is not None:
-                    ctypes.windll.gdi32.SelectObject(mfcDC, prev_obj)
-            except Exception:
-                # 恢复失败也不要抛出
-                log.exception("恢复原始 DC 对象失败")
-            # 清理实例级记录
-            try:
-                with self._lock:
-                    self._selected_prev = None
-            except Exception:
-                log.exception("清理 _selected_prev 失败")
+    # _capture_window_to_bitmap 已移除；直接使用 BitmapResourceMixin._capture_bitmap_to_image

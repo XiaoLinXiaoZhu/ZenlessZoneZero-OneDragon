@@ -72,10 +72,9 @@ class EnvSourceEnum(Enum):
 
 class ScreenshotMethodEnum(Enum):
 
-    AUTO = ConfigItem('自动', 'auto')
-    PRINT_WINDOW = ConfigItem('Print Window', 'print_window')
-    MSS = ConfigItem('MSS', 'mss')
-    PIL = ConfigItem('PIL', 'pil')
+    BITBLT = ConfigItem('BitBlt', 'bitblt', desc='兼容性最好，需窗口可见，无法在后台截图')
+    PRINT_WINDOW = ConfigItem('Print Window', 'print_window', desc='支持后台截图，但不兼容云游戏')
+    PIL = ConfigItem('PIL', 'pil', desc='不推荐，仅作备用，性能较差')
 
 
 class EnvConfig(YamlConfig):
@@ -423,7 +422,7 @@ class EnvConfig(YamlConfig):
         """
         截图方法
         """
-        return self.get('screenshot_method', ScreenshotMethodEnum.AUTO.value.value)
+        return self.get('screenshot_method', ScreenshotMethodEnum.BITBLT.value.value)
 
     @screenshot_method.setter
     def screenshot_method(self, new_value: str) -> None:
