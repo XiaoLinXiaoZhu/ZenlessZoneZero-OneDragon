@@ -58,13 +58,19 @@ class PcScreenshotController:
         for method_name in methods_to_try_names:
             try:
                 strategy = self.strategies.get(method_name)
-                if strategy:
-                    result = strategy.capture(rect, independent)
-                    if result is not None:
-                        return result
+                if not strategy:
+                    continue
+
+                result = strategy.capture(rect, independent)
+                if result is None:
+                    continue
+
+                if not independent and self.active_strategy_name != method_name:
+                    self.active_strategy_name = method_name
+                return result
+
             except Exception:
                 continue
-
         log.error("所有截图方法都失败了")
         return None
 
