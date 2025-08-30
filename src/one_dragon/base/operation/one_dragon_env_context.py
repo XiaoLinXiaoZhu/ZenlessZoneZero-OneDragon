@@ -5,6 +5,7 @@ from one_dragon.envs.download_service import DownloadService
 from one_dragon.envs.env_config import EnvConfig
 from one_dragon.envs.ghproxy_service import GhProxyService
 from one_dragon.envs.git_service import GitService
+from one_dragon.envs.update_service import UpdateService
 from one_dragon.envs.project_config import ProjectConfig
 from one_dragon.envs.python_service import PythonService
 from one_dragon.utils import thread_utils
@@ -26,6 +27,7 @@ class OneDragonEnvContext:
         self.python_service: PythonService = PythonService(self.project_config, self.env_config, self.download_service)
         self.gh_proxy_service: GhProxyService = GhProxyService(self.env_config)
         self.installer_dir: Optional[str] = None
+        self.update_service: UpdateService = UpdateService(self.project_config, self.env_config, self.download_service, self.mirrorchyan_service, self.git_service)
 
     def init_by_config(self) -> None:
         pass
