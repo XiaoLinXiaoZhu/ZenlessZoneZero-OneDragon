@@ -6,6 +6,8 @@ from one_dragon.envs.env_config import EnvConfig
 from one_dragon.envs.ghproxy_service import GhProxyService
 from one_dragon.envs.git_service import GitService
 from one_dragon.envs.update_service import UpdateService
+from one_dragon.envs.mirrorchyan_config import MirrorChyanConfig
+from one_dragon.envs.mirrorchyan_service import MirrorChyanService
 from one_dragon.envs.project_config import ProjectConfig
 from one_dragon.envs.python_service import PythonService
 from one_dragon.utils import thread_utils
@@ -22,9 +24,11 @@ class OneDragonEnvContext:
         """
         self.project_config: ProjectConfig = ProjectConfig()
         self.env_config: EnvConfig = EnvConfig()
+        self.mirrorchyan_config: MirrorChyanConfig = MirrorChyanConfig()
         self.download_service: DownloadService = DownloadService(self.project_config, self.env_config)
         self.git_service: GitService = GitService(self.project_config, self.env_config, self.download_service)
         self.python_service: PythonService = PythonService(self.project_config, self.env_config, self.download_service)
+        self.mirrorchyan_service: MirrorChyanService = MirrorChyanService(self.project_config, self.env_config, self.mirrorchyan_config)
         self.gh_proxy_service: GhProxyService = GhProxyService(self.env_config)
         self.installer_dir: Optional[str] = None
         self.update_service: UpdateService = UpdateService(self.project_config, self.env_config, self.download_service, self.mirrorchyan_service, self.git_service)
