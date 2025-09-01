@@ -17,7 +17,7 @@ class LauncherInstallCard(BaseInstallCard):
             self,
             ctx=ctx,
             title_cn='启动器',
-            install_method=self.ctx.update_service.install_launcher
+            install_method=ctx.update_service.install_launcher
         )
 
     def after_progress_done(self, success: bool, msg: str) -> None:
@@ -38,6 +38,7 @@ class LauncherInstallCard(BaseInstallCard):
         :return: 显示的图标、文本
         """
         if self.ctx.update_service.check_launcher_exist():
+            icon = FluentIcon.INFO.icon(color=FluentThemeColor.DEFAULT_BLUE.value)
             msg = gt('已安装')
         else:
             icon = FluentIcon.INFO.icon(color=FluentThemeColor.RED.value)
