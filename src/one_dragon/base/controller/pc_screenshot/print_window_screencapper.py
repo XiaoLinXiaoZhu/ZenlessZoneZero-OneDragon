@@ -234,9 +234,36 @@ class PrintWindowScreencapper(ScreencapperBase):
                 # 释放时尽量不要抛出
                 log.exception("独立模式资源释放失败")
 
-    # 位图创建逻辑已移动到 BitmapResourceMixin._create_bitmap_resources
+    def _create_bitmap_resources(self, width, height, dc_handle=None):
+        """
+        创建位图相关资源
+        """
+        if dc_handle is None:
+            dc_handle = self.hwndDC
 
-    # 位图信息创建已移动到 BitmapResourceMixin._create_bmpinfo_buffer
+        saveBitMap = ctypes.windll.gdi32.CreateCompatibleBitmap(dc_handle, width, height)
+        if not saveBitMap:
+            raise Exception('无法创建兼容位图')
+
+        buffer_size = width * height * 4
+        buffer = ctypes.create_string_buffer(buffer_size)
+
+        bmpinfo_buffer = self._create_bmpinfo_buffer(width, height)
+
+        return saveBitMap, buffer, bmpinfo_buffer
+
+    def _create_bmpinfo_buffer(self, width, height):
+        """
+        创建位图信息结构
+        """
+        bmpinfo_buffer = ctypes.create_string_buffer(40)
+        ctypes.c_uint32.from_address(ctypes.addressof(bmpinfo_buffer)).value = 40
+        ctypes.c_int32.from_address(ctypes.addressof(bmpinfo_buffer) + 4).value = width
+        ctypes.c_int32.from_address(ctypes.addressof(bmpinfo_buffer) + 8).value = -height
+        ctypes.c_uint16.from_address(ctypes.addressof(bmpinfo_buffer) + 12).value = 1
+        ctypes.c_uint16.from_address(ctypes.addressof(bmpinfo_buffer) + 14).value = 32
+        ctypes.c_uint32.from_address(ctypes.addressof(bmpinfo_buffer) + 16).value = 0
+        return bmpinfo_buffer
 
     def _capture_window_to_bitmap(self, hwnd, width, height,
                                   hwndDC, mfcDC, saveBitMap,
