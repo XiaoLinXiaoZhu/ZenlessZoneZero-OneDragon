@@ -449,17 +449,47 @@ class SelfAdaptiveGenerator:
         return agent_sentences, agent_comb_sentences
 
     def _word2vec(self, agent_comb_sentences: dict):
-        from gensim.models import Word2Vec as GSWord2Vec
-        # 无监督训练获取分词向量
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.decomposition import TruncatedSVD
+        # 使用 scikit-learn 替代 gensim Word2Vec
         agent_models = {}
         for agent in self.agent_names:
             if len(agent_comb_sentences[agent]) > 0:
-                model = GSWord2Vec(agent_comb_sentences[agent],
-                                   vector_size=self.VECTOR_SIZE,
-                                   window=self.WINDOW_SIZE,
-                                   min_count=self.MIN_COUNT,
-                                   sg=self.CBOW,
-                                   workers=1)
+                # 将句子列表转换为字符串列表，用于 TfidfVectorizer
+                sentences_as_strings = [' '.join(sentence) for sentence in agent_comb_sentences[agent]]
+                
+                # 使用 TfidfVectorizer 进行文本向量化
+                vectorizer = TfidfVectorizer(
+                    max_features=1000,  # 限制特征数量
+                    min_df=self.MIN_COUNT,  # 最小文档频率
+                    ngram_range=(1, 2),  # 使用1-gram和2-gram
+                    lowercase=False  # 保持原始大小写
+                )
+                
+                # 训练向量化器
+                tfidf_matrix = vectorizer.fit_transform(sentences_as_strings)
+                
+                # 使用 TruncatedSVD 进行降维，模拟 Word2Vec 的向量维度
+                svd = TruncatedSVD(n_components=self.VECTOR_SIZE, random_state=42)
+                reduced_vectors = svd.fit_transform(tfidf_matrix)
+                
+                # 创建词汇表到向量的映射
+                vocab = vectorizer.get_feature_names_out()
+                word_to_vector = {}
+                for i, word in enumerate(vocab):
+                    # 获取该词在 TF-IDF 矩阵中的列索引
+                    if word in vectorizer.vocabulary_:
+                        col_idx = vectorizer.vocabulary_[word]
+                        # 使用 SVD 变换后的向量
+                        word_to_vector[word] = svd.components_[:, col_idx]
+                
+                # 存储模型信息
+                model = {
+                    'vectorizer': vectorizer,
+                    'svd': svd,
+                    'word_to_vector': word_to_vector,
+                    'vocab': vocab
+                }
                 agent_models[agent] = model
             else:
                 raise ValueError("当前代理人 {} 缺少录制动作数据, 该代理人可能未上场, 请重新录制动作避免战斗时间过短...".format(agent))
@@ -475,10 +505,22 @@ class SelfAdaptiveGenerator:
             sentences = agent_sentences[agent]
             model = agent_models[agent]
 
-            # 平均法获取向量
+            # 使用 scikit-learn 模型获取向量
             response_vectors = []
             for index in range(len(sentences)):
-                response_vectors.append(np.mean([model.wv[word] for word in sentences[index]], axis=0))
+                # 获取句子中每个词的向量
+                word_vectors = []
+                for word in sentences[index]:
+                    if word in model['word_to_vector']:
+                        word_vectors.append(model['word_to_vector'][word])
+                
+                if word_vectors:
+                    # 计算平均向量
+                    response_vectors.append(np.mean(word_vectors, axis=0))
+                else:
+                    # 如果没有找到任何词的向量，使用零向量
+                    response_vectors.append(np.zeros(self.VECTOR_SIZE))
+            
             response_vectors = np.asarray(response_vectors)
 
             # 根据动作状态包内的数量获取期望的聚类数量
