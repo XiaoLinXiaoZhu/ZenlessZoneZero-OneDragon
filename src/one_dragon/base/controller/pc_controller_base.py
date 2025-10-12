@@ -43,15 +43,23 @@ class PcControllerBase(ControllerBase):
         self.screenshot_controller: PcScreenshotController = PcScreenshotController(self.game_win, standard_width, standard_height)
         self.screenshot_method: str = screenshot_method
 
-    def init_before_context_run(self) -> bool:
-        pyautogui.FAILSAFE = False  # 禁用 Fail-Safe,防止鼠标接近屏幕的边缘或角落时报错
-        self.active_window()
-
+    def init_game_win(self) -> bool:
+        """
+        初始化游戏窗口相关内容
+        Returns:
+            是否初始化成功
+        """
+        self.game_win.init_win()
         if self.is_game_window_ready:
             self.screenshot_controller.init_screenshot(self.screenshot_method)
+            return True
         else:
-            self.screenshot_controller.async_init_screenshot(self.screenshot_method)
+            return False
 
+    def init_before_context_run(self) -> bool:
+        pyautogui.FAILSAFE = False  # 禁用 Fail-Safe,防止鼠标接近屏幕的边缘或角落时报错
+        self.init_game_win()
+        self.game_win.active()
         return True
 
     def cleanup_after_app_shutdown(self) -> None:
@@ -117,11 +125,11 @@ class PcControllerBase(ControllerBase):
             self.keyboard_controller.keyboard.release(keyboard.Key.alt)
         return True
 
-    def get_screenshot(self, independent: bool = False) -> MatLike | None:
+    def get_screenshot(self, independent: bool = False) -> MatLike:
         if self.is_game_window_ready:
             return self.screenshot_controller.get_screenshot(independent)
         else:
-            return None
+            raise RuntimeError('游戏窗口未就绪')
 
     def scroll(self, down: int, pos: Point = None):
         """

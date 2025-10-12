@@ -1,19 +1,14 @@
-import time
-from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict
 
 from cv2.typing import MatLike
 
-from one_dragon.base.controller.pc_screenshot.mss_screencapper import MssScreencapper
 from one_dragon.base.controller.pc_game_window import PcGameWindow
+from one_dragon.base.controller.pc_screenshot.mss_screencapper import MssScreencapper
 from one_dragon.base.controller.pc_screenshot.pil_screencapper import PilScreencapper
 from one_dragon.base.controller.pc_screenshot.print_window_screencapper import PrintWindowScreencapper
 from one_dragon.base.controller.pc_screenshot.screencapper_base import ScreencapperBase
 from one_dragon.base.geometry.rectangle import Rect
-from one_dragon.utils import thread_utils
 from one_dragon.utils.log_utils import log
-
-SCREENSHOT_INIT_EXECUTOR = ThreadPoolExecutor(thread_name_prefix='screenshot', max_workers=1)
 
 
 class PcScreenshotController:
@@ -74,26 +69,6 @@ class PcScreenshotController:
         log.error("所有截图方法都失败了")
         return None
 
-    def async_init_screenshot(self, method: str):
-        """
-        异步初始化截图方法
-        :param method: 首选的截图方法 ("auto", "print_window", "mss", "pil")
-        """
-        future = SCREENSHOT_INIT_EXECUTOR.submit(self._init_screenshot_with_wait, method)
-        future.add_done_callback(thread_utils.handle_future_result)
-
-    def _init_screenshot_with_wait(self, method: str):
-        """
-        等待窗口准备好再初始化截图
-        """
-        check_interval: float = 0.5
-        while True:
-            if self.game_win.is_win_valid:
-                break
-            time.sleep(check_interval)
-
-        return self.init_screenshot(method)
-
     def init_screenshot(self, method: str) -> Optional[str]:
         """
         初始化截图方法，带有回退机制
@@ -125,18 +100,11 @@ class PcScreenshotController:
             strategy.cleanup()
         self.active_strategy_name = None
 
-    def cleanup_init_executor(self):
-        """
-        清理异步初始化线程池
-        """
-        SCREENSHOT_INIT_EXECUTOR.shutdown(wait=False, cancel_futures=True)
-
     def cleanup(self):
         """
         清理资源
         """
         self.cleanup_resources()
-        self.cleanup_init_executor()
 
     def _get_method_priority_list(self, method: str) -> list:
         """
