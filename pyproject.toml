@@ -2,7 +2,7 @@
 name = "ZenlessZoneZero-OneDragon"
 version = "2.0.0"
 description = "绝区零 一条龙 | 全自动 | 自动闪避 | 自动每日 | 自动空洞 | 支持手柄"
-requires-python = ">=3.11.9,<=3.11.12"
+requires-python = ">=3.11.9,<3.12"
 dependencies = [
     "pyside6==6.8.0.2",
     "pyside6-fluent-widgets==1.7.0",
@@ -27,9 +27,54 @@ dev = [
     "pyinstaller==6.7.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
+    "ruff==0.12.10",
+]
+
+gamepad = [
+    "vgamepad==0.1.0",
 ]
 
 [tool.uv]
 package = false
 cache-dir = "./.install/uv_cache"
+environments = ["sys_platform == 'win32'"]
 default-groups = []
+
+# Ruff configuration
+[tool.ruff]
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+# Assume Python 3.11
+target-version = "py311"
+
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`) codes by default.
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "C",      # mccabe
+    "B",      # bugbear
+    "UP",     # pyupgrade
+    "SIM",    # simplify
+    "TID",    # tidy imports
+]
+extend-ignore = [
+    "E501",   # line too long - already handled by black style
+]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"

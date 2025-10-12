@@ -1,23 +1,25 @@
-import time
-
 import os
-from cv2.typing import MatLike
+import time
 from typing import Optional, List, Tuple
 
+from cv2.typing import MatLike
+
 from one_dragon.base.config.yaml_operator import YamlOperator
-from one_dragon.base.matcher.match_result import MatchResult
+from one_dragon.base.operation.application import application_const
 from one_dragon.base.screen import screen_utils
 from one_dragon.base.screen.screen_utils import FindAreaResultEnum
 from one_dragon.utils import os_utils, str_utils, cv2_utils
 from one_dragon.utils.i18_utils import gt
 from one_dragon.utils.log_utils import log
 from one_dragon.yolo.detect_utils import DetectFrameResult
+from zzz_od.application.hollow_zero.lost_void import lost_void_const
 from zzz_od.application.hollow_zero.lost_void.context.lost_void_artifact import LostVoidArtifact
 from zzz_od.application.hollow_zero.lost_void.context.lost_void_detector import LostVoidDetector
 from zzz_od.application.hollow_zero.lost_void.context.lost_void_investigation_strategy import \
     LostVoidInvestigationStrategy
 from zzz_od.application.hollow_zero.lost_void.lost_void_challenge_config import LostVoidRegionType, \
     LostVoidChallengeConfig
+from zzz_od.application.hollow_zero.lost_void.lost_void_config import LostVoidConfig
 from zzz_od.application.hollow_zero.lost_void.operation.interact.lost_void_artifact_pos import LostVoidArtifactPos
 from zzz_od.application.hollow_zero.lost_void.operation.lost_void_move_by_det import MoveTargetWrapper
 from zzz_od.auto_battle.auto_battle_dodge_context import YoloStateEventEnum
@@ -44,7 +46,6 @@ class LostVoidContext:
         self.predefined_team_idx: int = -1  # 本次挑战所使用的预备编队
         self.priority_updated: bool = False  # 动态优先级是否已经更新
         self.dynamic_priority_list: list[str] = []  # 动态获取的优先级列表
-
 
     def init_before_run(self) -> None:
         self.priority_updated = False
@@ -136,7 +137,12 @@ class LostVoidContext:
         加载挑战配置
         :return:
         """
-        self.challenge_config = LostVoidChallengeConfig(self.ctx.lost_void_config.challenge_config)
+        config: Optional[LostVoidConfig] = self.ctx.run_context.get_config(
+            app_id=lost_void_const.APP_ID,
+            instance_idx=self.ctx.current_instance_idx,
+            group_id=application_const.DEFAULT_GROUP_ID,
+        )
+        self.challenge_config = LostVoidChallengeConfig(config.challenge_config)
 
     def in_normal_world(self, screen: MatLike) -> bool:
         """
@@ -353,8 +359,7 @@ class LostVoidContext:
         return filter_result_list, error_msg
 
     def get_artifact_pos(
-            self, screen: MatLike,
-            to_choose_gear_branch: bool = False
+        self, screen: MatLike, to_choose_gear_branch: bool = False
     ) -> list[LostVoidArtifactPos]:
         """
         识别画面中出现的藏品
@@ -368,11 +373,25 @@ class LostVoidContext:
         for art in self.ctx.lost_void.all_artifact_list:
             artifact_name_list.append(gt(art.display_name, 'game'))
 
+        # 识别其它标识
+        title_word_list = [
+            gt('有同流派武备', 'game'),
+            gt('已选择', 'game'),
+            gt('齿轮硬币不足', 'game'),
+            gt('NEW!', 'game')
+        ]
+
+        # 其它标识也要一起匹配 防止部分鸣徽名称和这些很相似
+        artifact_name_list.extend(title_word_list)
+
         artifact_pos_list: list[LostVoidArtifactPos] = []
         ocr_result_map = self.ctx.ocr.run_ocr(screen)
         for ocr_result, mrl in ocr_result_map.items():
             title_idx: int = str_utils.find_best_match_by_difflib(ocr_result, artifact_name_list)
             if title_idx is None or title_idx < 0:
+                continue
+
+            if title_idx >= len(self.ctx.lost_void.all_artifact_list):
                 continue
 
             artifact = self.ctx.lost_void.all_artifact_list[title_idx]
@@ -412,13 +431,6 @@ class LostVoidContext:
                     if branch_artifact is not None:
                         closest_artifact_pos.artifact = branch_artifact
 
-        # 识别其它标识
-        title_word_list = [
-            gt('有同流派武备', 'game'),
-            gt('已选择', 'game'),
-            gt('齿轮硬币不足', 'game'),
-            gt('NEW!', 'game')
-        ]
         for ocr_result, mrl in ocr_result_map.items():
             title_idx: int = str_utils.find_best_match_by_difflib(ocr_result, title_word_list)
             if title_idx is None or title_idx < 0:

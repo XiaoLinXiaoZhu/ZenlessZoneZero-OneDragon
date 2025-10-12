@@ -1,9 +1,11 @@
-from enum import Enum
-from typing import Optional, List
 import uuid
+from enum import Enum
+from typing import List, Optional
 
 from one_dragon.base.config.config_item import ConfigItem
 from one_dragon.base.config.yaml_config import YamlConfig
+from one_dragon.base.operation.application.application_config import ApplicationConfig
+from zzz_od.application.charge_plan import charge_plan_const
 
 
 class CardNumEnum(Enum):
@@ -65,13 +67,14 @@ class ChargePlanItem:
         )
 
 
-class ChargePlanConfig(YamlConfig):
+class ChargePlanConfig(ApplicationConfig):
 
-    def __init__(self, instance_idx: Optional[int] = None):
-        YamlConfig.__init__(
+    def __init__(self, instance_idx: int, group_id: str):
+        ApplicationConfig.__init__(
             self,
-            module_name='charge_plan',
             instance_idx=instance_idx,
+            group_id=group_id,
+            app_id=charge_plan_const.APP_ID,
         )
 
         self.plan_list: List[ChargePlanItem] = []
@@ -86,7 +89,7 @@ class ChargePlanConfig(YamlConfig):
 
         for plan_item in self.plan_list:
             plan_data = {
-                'tab_name': '作战' if plan_item.category_name == '恶名狩猎' else '训练',
+                'tab_name': plan_item.tab_name,
                 'category_name': plan_item.category_name,
                 'mission_type_name': plan_item.mission_type_name,
                 'mission_name': plan_item.mission_name,
@@ -119,20 +122,7 @@ class ChargePlanConfig(YamlConfig):
 
         YamlConfig.save(self)
 
-    def add_plan(self, properties: dict) -> None:
-        plan = ChargePlanItem(
-            tab_name=properties.get('tab_name', '训练'),
-            category_name=properties.get('category_name', '实战模拟室'),
-            mission_type_name=properties.get('mission_type_name', '基础材料'),
-            mission_name=properties.get('mission_name', '调查专项'),
-            level=properties.get('level', '默认等级'),
-            auto_battle_config=properties.get('auto_battle_config', '全配队通用'),
-            run_times=properties.get('run_times', 0),
-            plan_times=properties.get('plan_times', 1),
-            card_num=properties.get('card_num', str(CardNumEnum.DEFAULT.value.value)),
-            predefined_team_idx=properties.get('predefined_team_idx', 0),
-            notorious_hunt_buff_num=properties.get('notorious_hunt_buff_num', 1),
-        )
+    def add_plan(self, plan: ChargePlanItem) -> None:
         self.plan_list.append(plan)
         self.save()
 
@@ -320,3 +310,7 @@ class ChargePlanConfig(YamlConfig):
     @restore_charge.setter
     def restore_charge(self, new_value: str) -> None:
         self.update('restore_charge', new_value)
+
+    @property
+    def is_restore_charge_enabled(self) -> bool:
+        return self.restore_charge != RestoreChargeEnum.NONE.value.value
