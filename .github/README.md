@@ -115,9 +115,9 @@ Approvers: [DoctorReid](https://github.com/DoctorReid)
 
 ## 🔒 隐私政策 (Privacy policy)
 
-本程序不会向其他网络系统传输任何信息，除非用户或安装、操作该程序的人员特别要求。
+本程序的隐私政策可在[此](PRIVACY.md)找到。
 
-This program will not transfer any information to other networked systems unless specifically requested by the user or the person installing or operating it.
+This program's privacy policy can be found [here](PRIVACY.md).
 
 ## ☕ 支持我们
 
